@@ -1,0 +1,20 @@
+.container {
+  width: 100%;
+}
+
+.search {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-weight: 600;
+}
+
+.search__input input {
+  width: 500px;
+}
+
+.search__message {
+  color: red;
+}
+
+.result {
+}
