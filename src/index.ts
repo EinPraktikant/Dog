@@ -67,4 +67,18 @@ queryField.addEventListener("input", (event) => {
       resultList.add(entry);
     }
   }
+
+  while (results.children.length !== 0) {
+    results.removeChild(results.lastChild);
+  }
+
+  for (const result of resultList) {
+    const node = document.createElement("div");
+    node.classList.add("result");
+    console.log(result.constructor);
+    const textNode = document.createTextNode(result.breedName);
+    node.appendChild(textNode);
+    
+    results.appendChild(node);
+  }
 })
