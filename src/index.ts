@@ -44,12 +44,8 @@ allBreeds.then((response) => {
         }
       }
     }
-  }, (text) => {
-    messageField.innerText = "Fehler";
-  });
-}, (response) => {
-  messageField.innerText = "Fehler";
-});
+  }, (reason) => messageField.innerText = "Fehler: " + reason);
+}, (reason) => messageField.innerText = "Fehler: " + reason);
 
 // Listen to query changes and search
 const queryField = <HTMLInputElement>document.getElementById("query");
@@ -75,9 +71,42 @@ queryField.addEventListener("input", (event) => {
   for (const result of resultList) {
     const node = document.createElement("div");
     node.classList.add("result");
-    console.log(result.constructor);
-    const textNode = document.createTextNode(result.breedName);
-    node.appendChild(textNode);
+    
+    // text container
+    const textContainer = document.createElement("div");
+    textContainer.classList.add("result__text");
+    let textNode: Text;
+    if (result.subbreedName === null) {
+      textNode = document.createTextNode(result.breedName);
+    } else {
+      textNode = document.createTextNode(result.breedName + ", " + result.subbreedName);
+    }
+    textContainer.appendChild(textNode);
+    node.appendChild(textContainer);
+
+    // Fetch random image
+    const images = fetch(basePath + "breed/" + result.breedName + "/images/random");
+
+    images.then((response) => {
+      response.text().then((text) => {
+        const message = JSON.parse(text);
+
+        if (message.status === "success") {
+          const imagePath: string = message.message;
+          
+          // img container
+          const imgContainer = document.createElement("div");
+          imgContainer.classList.add("result__img");
+          const img = document.createElement("img");
+          img.setAttribute("src", imagePath);
+          img.classList.add("dog-img");
+          imgContainer.appendChild(img);
+          node.appendChild(imgContainer);
+        } else {
+          messageField.innerText = "Fehler.";
+        }
+      }, (reason) => messageField.innerText = "Fehler: " + reason);
+    }, (reason) => messageField.innerText = "Fehler: " + reason);
     
     results.appendChild(node);
   }

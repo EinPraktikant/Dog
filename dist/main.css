@@ -16,5 +16,20 @@
   color: red;
 }
 
+#results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.dog-img {
+  max-width: 200px;
+  max-height: 200px;
+  width: 100%;
+  height: auto;
+}
+
 .result {
+  display: flexbox;
+  grid-template-rows: auto;
 }
