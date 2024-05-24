@@ -76,8 +76,7 @@ function addResult(imagePath: string, title?: string) {
   results.appendChild(node);
 }
 
-// Listen to query changes and search
-queryField.addEventListener("input", (event) => {
+function search() {
   const query = queryField.value.trim().toLowerCase();
   const queryWords = query.split(" ");
 
@@ -122,6 +121,17 @@ queryField.addEventListener("input", (event) => {
       }, (reason) => messageField.innerText = "Fehler: " + reason);
     }, (reason) => messageField.innerText = "Fehler: " + reason);
   }
+
+  if (resultList.size === 0) {
+    messageField.innerText = "No dogs found."
+  }
+}
+
+// Listen to query changes and wait until user stopped typing to not hammer the API server
+let timeout;
+queryField.addEventListener("input", (event) => {
+  clearTimeout(timeout);
+  timeout = setTimeout(search, 500);
 });
 
 // Random image on page load
