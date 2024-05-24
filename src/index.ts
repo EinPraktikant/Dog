@@ -123,3 +123,16 @@ queryField.addEventListener("input", (event) => {
     }, (reason) => messageField.innerText = "Fehler: " + reason);
   }
 });
+
+const randImage = fetch(basePath + "breeds/image/random/9");
+randImage.then((response) => {
+  response.text().then((text) => {
+    const result = JSON.parse(text);
+
+    const images = result.message;
+
+    for (const image of images) {
+      addResult(image);
+    }
+  })
+}, (reason) => messageField.innerText = "Fehler: " + reason);
