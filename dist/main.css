@@ -1,5 +1,6 @@
 .container {
   width: 100%;
+  margin: 1rem;
 }
 
 .search {
@@ -9,7 +10,8 @@
 }
 
 .search__input input {
-  width: 500px;
+  width: 100%;
+  font-size: 2rem;
 }
 
 .search__message {

@@ -124,6 +124,7 @@ queryField.addEventListener("input", (event) => {
   }
 });
 
+// Random image on page load
 const randImage = fetch(basePath + "breeds/image/random/9");
 randImage.then((response) => {
   response.text().then((text) => {
