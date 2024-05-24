@@ -32,6 +32,6 @@
 }
 
 .result {
-  display: flexbox;
-  grid-template-rows: auto;
+  display: flex;
+  flex-direction: column;
 }

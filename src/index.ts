@@ -1,69 +1,120 @@
-const basePath = ` https://dog.ceo/api/`;
+const BasePath = new URL("https://dog.ceo/api/");
 
-const messageField = document.getElementById("message");
+const ErrorMessageField = document.getElementById("message");
 
-class Entry {
-  breedName: string;
-  subbreedName: string;
+class IndexDocument {
+  text: string;
 }
 
-const index: Map<string, Entry> = new Map();
+/* class Index {
+  private invertedIndex: Map<string, IndexEntry>;
 
-// Fetch breeds from servers and put into a map
-const allBreeds = fetch(basePath + "breeds/list/all");
-allBreeds.then((response) => {
-  response.text().then((text) => {
-    const message = JSON.parse(text);
+  constructor() {}
 
-    if (!message.status || message.status !== "success") {
-      messageField.innerText = "Fehler vom Server.";
-    } else { // Fill index
-      for (const [breed, subbreeds] of Object.entries(message.message)) {
-        const entry: Entry = {
-          breedName: breed,
-          subbreedName: null,
-        };
+  private tokenize(text: string): string[] {
+    const words = text.split(" ");
 
-        const words = breed.split(" ");
+    return words;
+  }
 
-        for (const word of words) {
-          index.set(word, entry);
-        }
+  insert(title: string, indexDocument: IndexDocument): void {
+    const text = sanitizeText(indexDocument.text);
+    const tokens = this.tokenize(text);
 
-        for (const subbreed of <Array<string>>subbreeds) {
-          const entry: Entry = {
+    for (const word of tokens) {
+      this.invertedIndex.set(word, entry);
+    }
+  }
+} */
+
+type IndexEntry = {
+  breedName: string;
+  subbreedName?: string;
+};
+
+type RandomImagesMessage = {
+  message: string[];
+  status: string;
+};
+
+type ListAllBreedsMessage = {
+  message: object;
+  status: string;
+};
+
+type RandomBreedImagesMessage = {
+  message: string;
+  status: string;
+};
+
+function insertEntryIntoIndex(searchIndex: Map<string, IndexEntry>, entry: IndexEntry, ...tokens: string[]): void {
+  for (const word of tokens) {
+    searchIndex.set(word, entry);
+  }
+}
+
+function displayError(error: string = undefined): void {
+  if (error === undefined) {
+    ErrorMessageField.innerText = "Fehler.";
+  } else {
+    ErrorMessageField.innerText = `Fehler: ${error}`;
+  }
+}
+
+function buildIndex(searchIndex: Map<string, IndexEntry>): void {
+  // Fetch breeds from servers and put into a map
+  const allBreeds = fetch(new URL("breeds/list/all", BasePath));
+  allBreeds.then((response) => {
+    response.json().then((message: ListAllBreedsMessage) => {
+      if (!message.status || message.status !== "success") {
+        displayError("Fehler vom Server.");
+      } else { // Fill index
+        for (const [breed, subbreeds] of Object.entries(message.message)) {
+          const entry: IndexEntry = {
             breedName: breed,
-            subbreedName: subbreed,
           };
 
-          const words = subbreed.split(" ");
+          const words = breed.split(" ");
+          insertEntryIntoIndex(searchIndex, entry, ...words);
 
-          for (const word of words) {
-            index.set(word, entry);
+          for (const subbreed of <Array<string>>subbreeds) {
+            const entry: IndexEntry = {
+              breedName: breed,
+              subbreedName: subbreed,
+            };
+
+            const words = subbreed.split(" ");
+            insertEntryIntoIndex(searchIndex, entry, ...words);
           }
         }
       }
-    }
-  }, (reason) => messageField.innerText = "Fehler: " + reason);
-}, (reason) => messageField.innerText = "Fehler: " + reason);
+    }, (reason) => displayError(reason));
+  }, (reason) => displayError(reason));
+}
 
-const queryField = <HTMLInputElement>document.getElementById("query");
-const results = document.getElementById("results");
+function clearResultsPage(resultsContainer: HTMLElement): void {
+  if (resultsContainer == null) {
+    return;
+  }
 
-function addResult(imagePath: string, title?: string) {
-  const node = document.createElement("div");
-  node.classList.add("result");
-  
+  while (resultsContainer.children.length !== 0) {
+    resultsContainer.removeChild(resultsContainer.lastChild);
+  }
+}
+
+function appendResultToPage(resultsContainer: HTMLElement, imagePath: string, title: string = undefined): void {
+  const resultNode = document.createElement("div");
+  resultNode.classList.add("result");
+
   // Text container
   if (title !== undefined) {
     const textContainer = document.createElement("div");
     textContainer.classList.add("result__text");
-    let textNode: Text;
-    textNode = document.createTextNode(title);
+    let textNode: Text = document.createTextNode(title);
     textContainer.appendChild(textNode);
-    node.appendChild(textContainer);
+    resultNode.appendChild(textContainer);
   }
-  
+
   // img container
   const imgContainer = document.createElement("div");
   imgContainer.classList.add("result__img");
@@ -71,79 +122,102 @@ function addResult(imagePath: string, title?: string) {
   img.setAttribute("src", imagePath);
   img.classList.add("dog-img");
   imgContainer.appendChild(img);
-  node.appendChild(imgContainer);
-  
-  results.appendChild(node);
+  resultNode.appendChild(imgContainer);
+
+  resultsContainer.appendChild(resultNode);
 }
 
-function search() {
-  const query = queryField.value.trim().toLowerCase();
+async function displayRandomResults(resultsContainer: HTMLElement): Promise<void> {
+  clearResultsPage(resultsContainer);
+
+  const randomImage = await fetch(new URL("breeds/image/random/9", BasePath));
+  const result: RandomImagesMessage = await randomImage.json();
+
+  for (const image of result.message) {
+    appendResultToPage(resultsContainer, image);
+  }
+}
+
+function sanitizeText(text: string): string {
+  text = text.trim();
+
+  text.toLowerCase();
+
+  const re = /\s+/;
+
+  text = text.replace(re, " ");
+
+  return text;
+}
+
+function search(queryField: HTMLInputElement, resultsContainer: HTMLElement, searchIndex: Map<string, IndexEntry>): void {
+  const results: Set<IndexEntry> = new Set();
+
+  const query = sanitizeText(queryField.value);
+  if (query.length === 0) {
+    displayRandomResults(resultsContainer).catch((reason) => displayError(reason));
+    return;
+  }
   const queryWords = query.split(" ");
-
-  const resultList: Set<Entry> = new Set<Entry>();
-
   for (const word of queryWords) {
-    const entry = index.get(word);
+    const entry = searchIndex.get(word);
 
     if (entry != null) {
-      resultList.add(entry);
+      results.add(entry);
     }
   }
 
-  while (results.children.length !== 0) {
-    results.removeChild(results.lastChild);
-  }
+  clearResultsPage(resultsContainer);
 
-  for (const result of resultList) {
+  for (const result of results) {
     let title: string;
-    if (result.subbreedName === null) {
+    if (result.subbreedName == null) {
       title = result.breedName;
     } else {
       title = result.breedName + ", " + result.subbreedName;
     }
 
     // Fetch random image
-    const images = fetch(basePath + "breed/" + result.breedName + "/images/random");
-
-    let imagePath = "";
+    const images = fetch(new URL("breed/" + result.breedName + "/images/random", BasePath));
 
     images.then((response) => {
-      response.text().then((text) => {
-        const message = JSON.parse(text);
-
+      response.json().then((message: RandomBreedImagesMessage) => {
         if (message.status === "success") {
-          imagePath = message.message;
+          const imagePath = message.message;
+
+          appendResultToPage(resultsContainer, imagePath, title);
         } else {
-          messageField.innerText = "Fehler.";
+          displayError();
         }
-    
-        addResult(imagePath, title);
-      }, (reason) => messageField.innerText = "Fehler: " + reason);
-    }, (reason) => messageField.innerText = "Fehler: " + reason);
+      }, (reason) => displayError(reason));
+    }, (reason) => displayError(reason));
   }
 
-  if (resultList.size === 0) {
-    messageField.innerText = "No dogs found."
+  if (results.size === 0) {
+    displayError("No dogs found.");
   }
 }
 
-// Listen to query changes and wait until user stopped typing to not hammer the API server
-let timeout;
-queryField.addEventListener("input", (event) => {
-  clearTimeout(timeout);
-  timeout = setTimeout(search, 500);
-});
+function triggerSearchOnInputChange(queryField: HTMLInputElement, resultsContainer: HTMLElement, searchIndex: Map<string, IndexEntry>): void {
+  let searchTimeout: NodeJS.Timeout;
 
-// Random image on page load
-const randImage = fetch(basePath + "breeds/image/random/9");
-randImage.then((response) => {
-  response.text().then((text) => {
-    const result = JSON.parse(text);
+  queryField.addEventListener("input", (event) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(search, 500, queryField, resultsContainer, searchIndex);
+  });
+}
 
-    const images = result.message;
 
-    for (const image of images) {
-      addResult(image);
-    }
-  })
-}, (reason) => messageField.innerText = "Fehler: " + reason);
+
+// ---------------------------- "main"
+const QueryField = document.getElementById("query") as HTMLInputElement;
+
+const SearchIndex: Map<string, IndexEntry> = new Map();
+
+const ResultsContainer = document.getElementById("results");
+
+buildIndex(SearchIndex);
+
+displayRandomResults(ResultsContainer).catch((reason) => displayError(reason));
+
+triggerSearchOnInputChange(QueryField, ResultsContainer, SearchIndex);
